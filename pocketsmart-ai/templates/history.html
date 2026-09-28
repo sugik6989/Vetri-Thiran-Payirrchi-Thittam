@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}History - PocketSmart AI{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <div class="history-header">
+        <h1>📋 Your Recommendation History</h1>
+        <p>View and manage all your previous budget plans and recommendations</p>
+    </div>
+    
+    <div id="historyList" class="history-list">
+        <p class="loading">Loading your history...</p>
+    </div>
+</div>
+
+<!-- Modal for viewing details -->
+<div id="detailModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <div id="modalBody"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadHistory() {
+    try {
+        const response = await fetch('/history-data');
+        if (response.ok) {
+            const data = await response.json();
+            const historyList = document.getElementById('historyList');
+            
+            if (data.history && data.history.length > 0) {
+                historyList.innerHTML = data.history.map(item => `
+                    <div class="history-card">
+                        <div class="history-card-header">
+                            <span class="history-type-icon">${getIconForType(item.type)}</span>
+                            <span class="history-type">${getTitleForType(item.type)}</span>
+                            <span class="history-date">${new Date(item.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        <div class="history-card-body">
+                            <p>${item.summary}</p>
+                        </div>
+                        <div class="history-card-footer">
+                            <button onclick="viewDetails('${item.id}')" class="btn btn-sm btn-primary">
+                                👁️ View Full Details
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                historyList.innerHTML = `
+                    <div class="no-history">
+                        <p>No recommendation history yet.</p>
+                        <a href="/dashboard" class="btn btn-primary">Create Your First Budget Plan</a>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading history:', error);
+    }
+}
+
+async function viewDetails(id) {
+    try {
+        const response = await fetch(`/recommendation-details/${id}`);
+        if (response.ok) {
+            const data = await response.json();
+            showModal(data);
+        } else {
+            alert('Could not load details');
+        }
+    } catch (error) {
+        alert('Error loading details');
+    }
+}
+
+function showModal(data) {
+    const modal = document.getElementById('detailModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    const result = data.full_result;
+    
+    let html = `
+        <h2>${getIconForType(data.type)} ${getTitleForType(data.type)}</h2>
+        <p class="modal-date">Created: ${new Date(data.timestamp).toLocaleString()}</p>
+        
+        <div class="modal-summary">
+            <p><strong>Total Budget:</strong> ₹${formatNumber(result.total_budget || 0)}</p>
+            <p><strong>Remaining:</strong> ₹${formatNumber(result.remaining_budget || 0)}</p>
+        </div>
+    `;
+    
+    if (result.budget_breakdown) {
+        for (const category of result.budget_breakdown) {
+            html += `
+                <div class="modal-category">
+                    <h3>${category.category}</h3>
+                    <ul>
+                        ${(category.items || []).map(item => 
+                            `<li>${item.name} - ₹${formatNumber(item.estimated_price)}</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+    }
+    
+    if (result.jewelry_recommendations) {
+        html += `<div class="modal-category"><h3>Jewelry Items</h3><ul>`;
+        for (const item of result.jewelry_recommendations) {
+            html += `<li>${item.item_type} - ₹${formatNumber(item.estimated_price)}</li>`;
+        }
+        html += `</ul></div>`;
+    }
+    
+    modalBody.innerHTML = html;
+    modal.style.display = 'block';
+    
+    document.querySelector('.modal-close').onclick = () => {
+        modal.style.display = 'none';
+    };
+    
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
+}
+
+function getIconForType(type) {
+    const icons = { 'home': '🏠', 'party': '🎉', 'jewelry': '💎' };
+    return icons[type] || '📋';
+}
+
+function getTitleForType(type) {
+    const titles = { 'home': 'Home Budget Plan', 'party': 'Party Budget Plan', 'jewelry': 'Jewelry Budget Plan' };
+    return titles[type] || 'Budget Plan';
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+
+loadHistory();
+</script>
+{% endblock %}

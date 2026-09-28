@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - PocketSmart AI{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1>PocketSmart</h1>
+            <p>AI-Powered Budget Planning</p>
+        </div>
+        
+        <h2>Welcome Back</h2>
+        
+        <form id="loginForm" class="auth-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            
+            <div class="form-options">
+                <a href="#" class="forgot-link">Forgot Password?</a>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Sign In →</button>
+        </form>
+        
+        <p class="auth-footer">
+            Don't have an account? <a href="/register">Create Account</a>
+        </p>
+        
+        <div class="demo-credentials">
+            <p><strong>Demo Credentials:</strong></p>
+            <p>Username: <code>demo</code> | Password: <code>demo123</code></p>
+        </div>
+    </div>
+</div>
+
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        const response = await fetch('/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+        
+        if (response.ok) {
+            window.location.href = '/dashboard';
+        } else {
+            const error = await response.json();
+            showError(error.detail || 'Login failed');
+        }
+    } catch (error) {
+        showError('An error occurred. Please try again.');
+    }
+});
+
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+</script>
+{% endblock %}

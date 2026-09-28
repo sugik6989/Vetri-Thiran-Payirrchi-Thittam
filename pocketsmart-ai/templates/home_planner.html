@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Home Budget Planner - PocketSmart AI{% endblock %}
+
+{% block content %}
+<div class="planner-container">
+    <div class="planner-header">
+        <h1>🏠 Home Interior Budget Planner</h1>
+        <p>Plan your interior design budget efficiently with AI-powered recommendations</p>
+    </div>
+    
+    <div class="planner-form-container">
+        <form id="homePlannerForm" class="planner-form">
+            <div class="form-section">
+                <h3>💰 Budget Details</h3>
+                <div class="form-group">
+                    <label for="total_budget">Total Budget (₹)</label>
+                    <input type="number" id="total_budget" name="total_budget" min="1000" step="100" value="50000" required>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📦 Requirements</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="num_lights">Lights/Lighting Fixtures</label>
+                        <input type="number" id="num_lights" name="num_lights" min="0" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label for="num_fans">Ceiling Fans</label>
+                        <input type="number" id="num_fans" name="num_fans" min="0" value="2">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="num_furniture">Furniture Pieces</label>
+                        <input type="number" id="num_furniture" name="num_furniture" min="0" value="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="num_dining_tables">Dining Tables</label>
+                        <input type="number" id="num_dining_tables" name="num_dining_tables" min="0" value="1">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>🏠 Rooms to Consider</h3>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="has_living_room" checked>
+                        <span>Living Room</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="has_kitchen">
+                        <span>Kitchen</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="has_bedroom">
+                        <span>Bedroom</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📝 Additional Requirements</h3>
+                <div class="form-group">
+                    <textarea id="additional_requirements" name="additional_requirements" rows="3" placeholder="Any specific requirements or preferences..."></textarea>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+                🔄 Generate Recommendations
+            </button>
+        </form>
+    </div>
+    
+    <div id="resultsContainer" class="results-container" style="display: none;">
+        <!-- Results will be displayed here -->
+    </div>
+    
+    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Generating your personalized recommendations...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('homePlannerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    loadingIndicator.style.display = 'block';
+    resultsContainer.style.display = 'none';
+    
+    const formData = {
+        total_budget: parseFloat(document.getElementById('total_budget').value),
+        num_lights: parseInt(document.getElementById('num_lights').value) || 0,
+        num_fans: parseInt(document.getElementById('num_fans').value) || 0,
+        num_furniture: parseInt(document.getElementById('num_furniture').value) || 0,
+        num_dining_tables: parseInt(document.getElementById('num_dining_tables').value) || 0,
+        has_living_room: document.querySelector('input[name="has_living_room"]').checked,
+        has_kitchen: document.querySelector('input[name="has_kitchen"]').checked,
+        has_bedroom: document.querySelector('input[name="has_bedroom"]').checked,
+        additional_requirements: document.getElementById('additional_requirements').value || null
+    };
+    
+    try {
+        const response = await fetch('/home-budget', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayResults(data);
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to generate recommendations'));
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+        console.error(error);
+    } finally {
+        loadingIndicator.style.display = 'none';
+    }
+});
+
+function displayResults(data) {
+    const container = document.getElementById('resultsContainer');
+    
+    let html = `
+        <div class="results-header">
+            <h2>📊 Your Personalized Budget Plan</h2>
+        </div>
+        
+        <div class="budget-summary">
+            <div class="summary-item">
+                <span>Total Budget:</span>
+                <strong>₹${formatNumber(data.total_budget)}</strong>
+            </div>
+            <div class="summary-item">
+                <span>Remaining Budget:</span>
+                <strong class="remaining">₹${formatNumber(data.remaining_budget)}</strong>
+            </div>
+        </div>
+    `;
+    
+    // Budget breakdown by category
+    for (const category of data.budget_breakdown || []) {
+        html += `
+            <div class="category-section">
+                <h3>${getCategoryIcon(category.category)} ${capitalize(category.category)}</h3>
+                <p class="allocation">Allocation: ₹${formatNumber(category.allocation)}</p>
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Description</th>
+                            <th>Price</th>
+                            <th>Qty</th>
+                            <th>Shopping Links</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        for (const item of category.items || []) {
+            html += `
+                <tr>
+                    <td><strong>${item.name}</strong></td>
+                    <td>${item.description}</td>
+                    <td>₹${formatNumber(item.estimated_price)}</td>
+                    <td>${item.quantity}</td>
+                    <td class="shopping-links">
+                        ${renderShoppingLinks(item.shopping_links)}
+                    </td>
+                </tr>
+            `;
+        }
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    // Additional suggestions
+    if (data.additional_suggestions && data.additional_suggestions.length > 0) {
+        html += `
+            <div class="suggestions-section">
+                <h3>💡 Additional Suggestions</h3>
+                <ul>
+                    ${data.additional_suggestions.map(s => `<li>${s}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    container.style.display = 'block';
+}
+
+function renderShoppingLinks(links) {
+    if (!links) return 'N/A';
+    
+    const platformNames = {
+        'amazon': 'Amazon',
+        'flipkart': 'Flipkart',
+        'ikea': 'IKEA',
+        'myntra': 'Myntra',
+        'ajio': 'Ajio'
+    };
+    
+    return Object.entries(links).map(([platform, url]) => 
+        `<a href="${url}" target="_blank" class="shop-link">${platformNames[platform] || platform}</a>`
+    ).join('');
+}
+
+function getCategoryIcon(category) {
+    const icons = {
+        'lighting': '💡',
+        'fans': '🌀',
+        'furniture': '🪑',
+        'dining': '🍽️',
+        'decor': '🎨'
+    };
+    return icons[category.toLowerCase()] || '📦';
+}
+
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+</script>
+{% endblock %}

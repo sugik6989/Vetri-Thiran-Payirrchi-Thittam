@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Party Budget Planner - PocketSmart AI{% endblock %}
+
+{% block content %}
+<div class="planner-container">
+    <div class="planner-header">
+        <h1>🎉 Party Budget Planner</h1>
+        <p>Plan your perfect event with smart budget allocations</p>
+    </div>
+    
+    <div class="planner-form-container">
+        <form id="partyPlannerForm" class="planner-form">
+            <div class="form-section">
+                <h3>💰 Budget Details</h3>
+                <div class="form-group">
+                    <label for="total_budget">Total Budget (₹)</label>
+                    <input type="number" id="total_budget" name="total_budget" min="1000" step="500" value="50000" required>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>🎊 Party Details</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="party_type">Party Type</label>
+                        <select id="party_type" name="party_type" required>
+                            <option value="birthday">Birthday Party</option>
+                            <option value="wedding">Wedding</option>
+                            <option value="corporate">Corporate Event</option>
+                            <option value="anniversary">Anniversary</option>
+                            <option value="housewarming">Housewarming</option>
+                            <option value="graduation">Graduation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="num_guests">Number of Guests</label>
+                        <input type="number" id="num_guests" name="num_guests" min="1" value="50" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="venue_type">Venue Type (Optional)</label>
+                    <select id="venue_type" name="venue_type">
+                        <option value="">Select venue type</option>
+                        <option value="home">At Home</option>
+                        <option value="restaurant">Restaurant</option>
+                        <option value="banquet">Banquet Hall</option>
+                        <option value="outdoor">Outdoor</option>
+                        <option value="hotel">Hotel</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📋 Services Needed</h3>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="needs_catering" checked>
+                        <span>Catering</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="needs_decoration" checked>
+                        <span>Decoration</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="needs_entertainment">
+                        <span>Entertainment</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📝 Additional Requirements</h3>
+                <div class="form-group">
+                    <textarea id="additional_requirements" name="additional_requirements" rows="3" placeholder="Any specific requirements..."></textarea>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+                🔄 Generate Recommendations
+            </button>
+        </form>
+    </div>
+    
+    <div id="resultsContainer" class="results-container" style="display: none;"></div>
+    
+    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Generating your party budget plan...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('partyPlannerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    loadingIndicator.style.display = 'block';
+    resultsContainer.style.display = 'none';
+    
+    const formData = {
+        total_budget: parseFloat(document.getElementById('total_budget').value),
+        party_type: document.getElementById('party_type').value,
+        num_guests: parseInt(document.getElementById('num_guests').value),
+        venue_type: document.getElementById('venue_type').value || null,
+        needs_catering: document.querySelector('input[name="needs_catering"]').checked,
+        needs_decoration: document.querySelector('input[name="needs_decoration"]').checked,
+        needs_entertainment: document.querySelector('input[name="needs_entertainment"]').checked,
+        additional_requirements: document.getElementById('additional_requirements').value || null
+    };
+    
+    try {
+        const response = await fetch('/party-budget', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayResults(data);
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to generate recommendations'));
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+        console.error(error);
+    } finally {
+        loadingIndicator.style.display = 'none';
+    }
+});
+
+function displayResults(data) {
+    const container = document.getElementById('resultsContainer');
+    
+    let html = `
+        <div class="results-header">
+            <h2>🎊 Your Party Budget Plan</h2>
+        </div>
+        
+        <div class="budget-summary">
+            <div class="summary-item">
+                <span>Total Budget:</span>
+                <strong>₹${formatNumber(data.total_budget)}</strong>
+            </div>
+            <div class="summary-item">
+                <span>Remaining Budget:</span>
+                <strong class="remaining">₹${formatNumber(data.remaining_budget)}</strong>
+            </div>
+        </div>
+    `;
+    
+    for (const category of data.budget_breakdown || []) {
+        html += `
+            <div class="category-section">
+                <h3>${getCategoryIcon(category.category)} ${capitalize(category.category)}</h3>
+                <p class="allocation">Allocation: ₹${formatNumber(category.allocation)}</p>
+                <div class="items-list">
+        `;
+        
+        for (const item of category.items || []) {
+            html += `
+                <div class="item-card">
+                    <div class="item-header">
+                        <strong>${item.name}</strong>
+                        <span class="item-price">₹${formatNumber(item.estimated_price)}</span>
+                    </div>
+                    <p>${item.description}</p>
+                    <div class="shopping-links">
+                        ${renderShoppingLinks(item.shopping_links)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.additional_suggestions && data.additional_suggestions.length > 0) {
+        html += `
+            <div class="suggestions-section">
+                <h3>💡 Additional Suggestions</h3>
+                <ul>
+                    ${data.additional_suggestions.map(s => `<li>${s}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    container.style.display = 'block';
+}
+
+function renderShoppingLinks(links) {
+    if (!links) return '';
+    
+    const platformNames = {
+        'amazon': 'Amazon',
+        'flipkart': 'Flipkart',
+        'swiggy': 'Swiggy',
+        'zomato': 'Zomato',
+        'bookmyshow': 'BookMyShow',
+        'oyorooms': 'OYO',
+        'google': 'Google',
+        'meesho': 'Meesho',
+        'myntra': 'Myntra'
+    };
+    
+    return Object.entries(links).map(([platform, url]) => 
+        `<a href="${url}" target="_blank" class="shop-link">${platformNames[platform] || platform}</a>`
+    ).join('');
+}
+
+function getCategoryIcon(category) {
+    const icons = {
+        'venue': '📍',
+        'catering': '🍽️',
+        'decoration': '🎨',
+        'entertainment': '🎵',
+        'gifts': '🎁',
+        'contingency': '💰',
+        'food': '🍕',
+        'drinks': '🥤'
+    };
+    return icons[category.toLowerCase()] || '📦';
+}
+
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+</script>
+{% endblock %}

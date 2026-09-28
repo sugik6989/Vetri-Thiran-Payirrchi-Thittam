@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PocketSmart AI{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">💰</span>
+                <span>PocketSmart</span>
+            </a>
+            <div class="nav-links">
+                {% if user %}
+                    <a href="/dashboard">Dashboard</a>
+                    <a href="/home_planner">Home Planner</a>
+                    <a href="/party_planner">Party Planner</a>
+                    <a href="/jewelry_planner">Jewelry Planner</a>
+                    <a href="/history">History</a>
+                    <a href="/logout" class="btn-logout">Logout</a>
+                {% else %}
+                    <a href="/#features">Features</a>
+                    <a href="/#testimonials">Testimonials</a>
+                    <a href="/login">Sign In</a>
+                    <a href="/register" class="btn-primary">Get Started</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>PocketSmart</h3>
+                <p>AI-powered budget planning tools to help you make smarter financial decisions every day.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h4>Company</h4>
+                    <a href="#">About Us</a>
+                    <a href="#">Our Team</a>
+                    <a href="#">Careers</a>
+                    <a href="#">Contact Us</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Product</h4>
+                    <a href="/home_planner">Home Planner</a>
+                    <a href="/party_planner">Party Planner</a>
+                    <a href="/jewelry_planner">Jewelry Planner</a>
+                    <a href="#">Pricing</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Resources</h4>
+                    <a href="#">Blog</a>
+                    <a href="#">Guides</a>
+                    <a href="#">FAQ</a>
+                    <a href="#">Support</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Legal</h4>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2025 PocketSmart. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

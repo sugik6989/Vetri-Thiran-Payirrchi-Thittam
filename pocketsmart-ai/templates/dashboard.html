@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - PocketSmart AI{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Welcome, {{ user.full_name or user.username }}!</h1>
+        <p>Choose a budget planner to get started with your personalized financial planning experience</p>
+    </div>
+    
+    <div class="dashboard-grid">
+        <div class="dashboard-card">
+            <div class="card-image home-image"></div>
+            <div class="card-content">
+                <h3>🏠 Home Budget Planner</h3>
+                <p>Plan your interior design budget efficiently with AI-powered recommendations for furniture, lighting, and more.</p>
+                <a href="/home_planner" class="btn btn-primary btn-block">Get Started</a>
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-image party-image"></div>
+            <div class="card-content">
+                <h3>🎉 Party Budget Planner</h3>
+                <p>Plan your perfect event with budget allocations for venue, catering, decorations, and entertainment.</p>
+                <a href="/party_planner" class="btn btn-primary btn-block">Get Started</a>
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-image jewelry-image"></div>
+            <div class="card-content">
+                <h3>💎 Jewelry Budget Planner</h3>
+                <p>Find the ideal jewelry pieces for any occasion that match your outfit and stay within your budget.</p>
+                <a href="/jewelry_planner" class="btn btn-primary btn-block">Get Started</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="history-link">
+        <a href="/history" class="btn btn-outline">📋 View All Recommendation History</a>
+    </div>
+    
+    <div class="recent-activity">
+        <h2>📋 Recent Activity</h2>
+        <div id="recentActivity" class="activity-list">
+            <p class="loading">Loading recent activity...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadRecentActivity() {
+    try {
+        const response = await fetch('/history-data');
+        if (response.ok) {
+            const data = await response.json();
+            const activityDiv = document.getElementById('recentActivity');
+            
+            if (data.history && data.history.length > 0) {
+                const recent = data.history.slice(0, 5);
+                activityDiv.innerHTML = recent.map(item => `
+                    <div class="activity-item">
+                        <div class="activity-icon">${getIconForType(item.type)}</div>
+                        <div class="activity-details">
+                            <strong>${getTitleForType(item.type)}</strong>
+                            <span>${item.summary}</span>
+                            <small>${new Date(item.timestamp).toLocaleDateString()}</small>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                activityDiv.innerHTML = '<p class="no-activity">No recent activity. Start by creating a budget plan!</p>';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading activity:', error);
+    }
+}
+
+function getIconForType(type) {
+    const icons = {
+        'home': '🏠',
+        'party': '🎉',
+        'jewelry': '💎'
+    };
+    return icons[type] || '📋';
+}
+
+function getTitleForType(type) {
+    const titles = {
+        'home': 'Home Budget Plan',
+        'party': 'Party Budget Plan',
+        'jewelry': 'Jewelry Budget Plan'
+    };
+    return titles[type] || 'Budget Plan';
+}
+
+loadRecentActivity();
+</script>
+{% endblock %}

@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Jewelry Budget Planner - PocketSmart AI{% endblock %}
+
+{% block content %}
+<div class="planner-container">
+    <div class="planner-header">
+        <h1>💎 Jewelry Budget Planner</h1>
+        <p>Get AI-powered jewelry recommendations within your budget for any occasion</p>
+    </div>
+    
+    <div class="planner-form-container">
+        <form id="jewelryPlannerForm" class="planner-form" enctype="multipart/form-data">
+            <div class="form-section">
+                <h3>💰 Budget Details</h3>
+                <div class="form-group">
+                    <label for="total_budget">Total Budget (₹)</label>
+                    <input type="number" id="total_budget" name="total_budget" min="1000" step="500" value="20000" required>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>🎯 Occasion & Preferences</h3>
+                <div class="form-group">
+                    <label for="occasion">Occasion</label>
+                    <select id="occasion" name="occasion" required>
+                        <option value="wedding">Wedding</option>
+                        <option value="birthday">Birthday</option>
+                        <option value="anniversary">Anniversary</option>
+                        <option value="festival">Festival</option>
+                        <option value="casual">Casual Wear</option>
+                        <option value="formal">Formal Event</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="preferences">Style Preferences</label>
+                    <textarea id="preferences" name="preferences" rows="2" placeholder="Describe your style preferences, materials, colors, etc."></textarea>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📸 Upload Outfit Image (Optional)</h3>
+                <div class="form-group">
+                    <div class="file-upload">
+                        <input type="file" id="outfit_image" name="outfit_image" accept="image/*">
+                        <label for="outfit_image" class="file-label">
+                            <span>📁 Choose an image or drag it here</span>
+                        </label>
+                    </div>
+                    <div id="imagePreview" class="image-preview" style="display: none;">
+                        <img id="previewImg" src="" alt="Outfit preview">
+                        <button type="button" id="removeImage" class="btn btn-sm btn-danger">Remove Image</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📝 Additional Requirements</h3>
+                <div class="form-group">
+                    <textarea id="additional_requirements" name="additional_requirements" rows="2" placeholder="Any specific requirements..."></textarea>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+                ✨ Get Recommendations
+            </button>
+        </form>
+    </div>
+    
+    <div id="resultsContainer" class="results-container" style="display: none;"></div>
+    
+    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Analyzing and generating jewelry recommendations...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Image preview
+document.getElementById('outfit_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+document.getElementById('removeImage').addEventListener('click', function() {
+    document.getElementById('outfit_image').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+});
+
+document.getElementById('jewelryPlannerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    loadingIndicator.style.display = 'block';
+    resultsContainer.style.display = 'none';
+    
+    const formData = new FormData();
+    formData.append('total_budget', document.getElementById('total_budget').value);
+    formData.append('occasion', document.getElementById('occasion').value);
+    formData.append('preferences', document.getElementById('preferences').value || '');
+    formData.append('additional_requirements', document.getElementById('additional_requirements').value || '');
+    
+    const imageFile = document.getElementById('outfit_image').files[0];
+    if (imageFile) {
+        formData.append('outfit_image', imageFile);
+    }
+    
+    try {
+        const response = await fetch('/jewelry-budget', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayResults(data);
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to generate recommendations'));
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+        console.error(error);
+    } finally {
+        loadingIndicator.style.display = 'none';
+    }
+});
+
+function displayResults(data) {
+    const container = document.getElementById('resultsContainer');
+    
+    let html = `
+        <div class="results-header">
+            <h2>💎 Your Personalized Jewelry Recommendations</h2>
+        </div>
+        
+        <div class="budget-summary">
+            <div class="summary-item">
+                <span>Total Budget:</span>
+                <strong>₹${formatNumber(data.total_budget)}</strong>
+            </div>
+            <div class="summary-item">
+                <span>Remaining Budget:</span>
+                <strong class="remaining">₹${formatNumber(data.remaining_budget)}</strong>
+            </div>
+        </div>
+    `;
+    
+    // Outfit analysis (if image was uploaded)
+    if (data.outfit_analysis) {
+        html += `
+            <div class="outfit-analysis">
+                <h3>👔 Outfit Analysis</h3>
+                <div class="analysis-items">
+                    <div class="analysis-item">
+                        <strong>Colors:</strong> ${(data.outfit_analysis.colors || []).join(', ') || 'N/A'}
+                    </div>
+                    <div class="analysis-item">
+                        <strong>Style:</strong> ${data.outfit_analysis.style || 'N/A'}
+                    </div>
+                    <div class="analysis-item">
+                        <strong>Formality:</strong> ${data.outfit_analysis.formality || 'N/A'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Jewelry recommendations
+    html += `<div class="jewelry-recommendations"><h3>💍 Jewelry Recommendations</h3>`;
+    
+    for (const item of data.jewelry_recommendations || []) {
+        html += `
+            <div class="jewelry-card">
+                <div class="jewelry-header">
+                    <h4>${item.item_type}</h4>
+                    <span class="jewelry-price">₹${formatNumber(item.estimated_price)}</span>
+                </div>
+                <p>${item.description}</p>
+                <p class="jewelry-style"><strong>Style:</strong> ${item.style}</p>
+                <div class="shopping-links">
+                    ${renderShoppingLinks(item.shopping_links)}
+                </div>
+            </div>
+        `;
+    }
+    
+    html += `</div>`;
+    
+    // Styling tips
+    if (data.styling_tips && data.styling_tips.length > 0) {
+        html += `
+            <div class="suggestions-section">
+                <h3>💡 Styling Tips</h3>
+                <ul>
+                    ${data.styling_tips.map(tip => `<li>${tip}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    container.style.display = 'block';
+}
+
+function renderShoppingLinks(links) {
+    if (!links) return '';
+    
+    const platformNames = {
+        'amazon': 'Amazon',
+        'flipkart': 'Flipkart',
+        'bluestone': 'BlueStone',
+        'tanishq': 'Tanishq',
+        'caratlane': 'CaratLane',
+        'melorra': 'Melorra',
+        'meesho': 'Meesho',
+        'myntra': 'Myntra'
+    };
+    
+    return Object.entries(links).map(([platform, url]) => 
+        `<a href="${url}" target="_blank" class="shop-link">${platformNames[platform] || platform}</a>`
+    ).join('');
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+</script>
+{% endblock %}
